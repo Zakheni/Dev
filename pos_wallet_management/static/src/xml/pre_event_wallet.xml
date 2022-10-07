@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright (c) 2016-Present Webkul Software Pvt. Ltd. (<https://webkul.com/>) -->
+<!-- See LICENSE file for full copyright and licensing details. -->
+<!-- License URL : <https://store.webkul.com/license.html/> -->
+<templates id="template" xml:space="preserve">
+    
+<!-- 
+    <t t-name="ListView.buttons" t-inherit="web.ListView.buttons" t-inherit-mode="extension" owl="1">
+        <xpath expr="//button[hasclass('o_list_button_add')]" position="after">
+            <button type="button" class="btn btn-primary wk_generate_wallet" title="Generate Wallets">
+                Generate Wallets
+            </button>
+        </xpath>
+    </t> -->
+
+</templates>
