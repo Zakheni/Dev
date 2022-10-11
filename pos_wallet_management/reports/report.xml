@@ -10,5 +10,7 @@
         <field name="report_name">pos_wallet_management.report_event_wallet_template</field>
         <field name="report_file">pos_wallet_management.report_event_wallet_template</field>
         <field name="paperformat_id" ref="pos_wallet_management.paperformat_print_wallet"/>
+        <field name="binding_model_id" ref="model_pos_wallet"/>
+        <field name="binding_type">report</field>
     </record>
 </odoo>
