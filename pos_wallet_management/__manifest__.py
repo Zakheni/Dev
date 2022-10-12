@@ -48,9 +48,6 @@ Pay from POs wallet""",
                               ],
                               'web.assets_qweb': [
                                 'pos_wallet_management/static/src/xml/**/*',
-                              ], 
-                              'web.assets_backend':[
-                                "/pos_wallet_management/static/src/js/WalletListView.js",  
                               ]
                             },
   "images"               :  ['static/description/Banner.png'],

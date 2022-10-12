@@ -47,14 +47,18 @@ class PosWallet(models.Model):
 	@api.model
 	def check_barcode_exists(self,data):
 		barcode_record = self.search([('wk_barcode','=',data.get('barcode')),('state','!=','cancel')])
+		partner = data.get('partner')
 		result_dict = {
 			'wallet_id':False,
 			'another_partner_linked':False,
 			'no_wallet_found':False,
 			'same_partner':False,
 			'partner':data,
+			'amount':0.0,
+			'wk_barcode':data.get('barcode'),
+			'name':barcode_record.name,
+			'partner_id':[partner.get('id'),partner.get('name')]
 		}
-		partner = data.get('partner')
 		if barcode_record:
 			pdf_data = {'id':barcode_record.id,}
 			if not barcode_record.partner_id:
@@ -64,10 +68,13 @@ class PosWallet(models.Model):
 			else:
 				if barcode_record.partner_id.id == partner.get('id'):
 					result_dict['same_partner'] = True
+					result_dict['amount'] = barcode_record.amount
+					result_dict['wallet_id'] = barcode_record.id
 				else:
 					result_dict['another_partner_linked'] = True
 		else:
 			result_dict['no_wallet_found'] = True
+
 		return result_dict
 
 	@api.constrains('partner_id','wk_pre_event_wallet')
@@ -89,7 +96,13 @@ class PosWallet(models.Model):
 				self_obj.amount = self_obj.partner_id.property_product_pricelist.currency_id.round(amount)
 			else:
 				self_obj.amount = amount
-
+	
+	@api.model
+	def check_wallet_cancel(self,data):
+		wallet_record = self.browse([data.get('wallet_id')])
+		if wallet_record.state == 'cancel':
+			return True
+		return False
 
 	@api.model
 	def create_wallet_by_rpc(self,data):
@@ -99,7 +112,8 @@ class PosWallet(models.Model):
 			wallet_details ={
 				'amount': 0,
 				'id': wallet.id,
-				'name':wallet.name
+				'name':wallet.name,
+				'wk_barcode':wallet.wk_barcode
 			}
 			return wallet_details
 
@@ -110,7 +124,7 @@ class PosWallet(models.Model):
 		if self.wk_pre_event_wallet and self.partner_id:
 			self.wk_pre_event_wallet = False
 		if self.wk_pre_event_wallet and (not self.partner_id):
-			raise ValidationError("Please select a customer to Validate the Wallet")
+			raise ValidationError("Please select a customer to validate the Wallet")
 		self.state = 'confirm'
 
 	def unlink(self):
@@ -130,7 +144,7 @@ class PosWallet(models.Model):
 			pos_config = pos_config[0]
 			ctx = dict(self.env.context, company_id=pos_config.company_id.id)
 			cash_journal = self.env['account.journal'].with_context(ctx).search([('type', '=', 'cash')])
-			wallet_method = pos_payment_method.with_context(ctx).search([('name','=','Wallet'),('is_cash_count', '=', True)])
+			wallet_method = pos_payment_method.with_context(ctx).search([('name','=','Scan Wallet QR Code/Barcode’'),('is_cash_count', '=', True)])
 			if cash_journal:
 				if wallet_method:
 					wallet_method.write({'wallet_method':True})
@@ -141,7 +155,28 @@ class PosWallet(models.Model):
 					if not wallet_method.id in pos_config.payment_method_ids.ids:
 						pos_config.sudo().write({'payment_method_ids':[(4,wallet_method.id)]})
 
-
+	@api.model
+	def create_debit_transaction(self,data):
+		trans_data = data.get('trans_data')
+		wallet_obj = self.browse([trans_data.get('wallet_id')])
+		if wallet_obj:
+			wk_wallet_trans_data = {
+				'amount':trans_data.get('amount'),
+				'trans_reason': trans_data.get('trans_reason') or 'Transfer Money',
+				'created_by':trans_data.get('user_id'),
+				'partner_id':trans_data.get('partner_id'),
+				'wallet_id':wallet_obj.id,
+				'payment_type':'DEBIT',
+				'state':'confirm'
+			}
+			result = self.env['pos.wallet.transaction'].create(wk_wallet_trans_data)
+			if result:
+				return True
+			else:
+				return False
+		else:
+			return False
+	
 class ResPartner(models.Model):
 	_inherit = 'res.partner'
 
@@ -163,15 +198,15 @@ class ResPartner(models.Model):
 			tree_view_action['context'] = {'search_default_partner_id':context.get('active_id', False),'partner_id': context.get('active_id', False) }
 			return tree_view_action
 		return {
-		'name': _('POS Wallet'),
-		'view_type': 'form',
-		'view_mode': 'form',
-		'view_id': self.env.ref('pos_wallet_management.pos_wallet_form').id,
-		'res_model': 'pos.wallet',
-		'type': 'ir.actions.act_window',
-		'nodestroy': True,
-		'target': 'current',
-		'res_id': Wallet and Wallet.ids[0] or False,
+			'name': _('POS Wallet'),
+			'view_type': 'form',
+			'view_mode': 'form',
+			'view_id': self.env.ref('pos_wallet_management.pos_wallet_form').id,
+			'res_model': 'pos.wallet',
+			'type': 'ir.actions.act_window',
+			'nodestroy': True,
+			'target': 'current',
+			'res_id': Wallet and Wallet.ids[0] or False,
 		}
 
 class PosWalletTranscation(models.Model):
@@ -198,6 +233,9 @@ class PosWalletTranscation(models.Model):
 class PosOrder(models.Model):
 	_inherit = "pos.order"
 
+	recharged_wallet_id = fields.Many2one("pos.wallet", string="Recharged Wallet")
+	redeem_wallet_id = fields.Many2one("pos.wallet", string="Redeem Wallet")
+
 	@api.model
 	def create_from_ui(self, orders,draft = False):
 		order_ids = super(PosOrder,self).create_from_ui(orders,draft)
@@ -210,7 +248,18 @@ class PosOrder(models.Model):
 					currency = pos_order.pricelist_id.currency_id
 					wallet_trans_data = order_data.get('wallet_recharge_data')
 					if(wallet_trans_data and wallet_trans_data.get('wallet_product_id')):
-						wallet_id = self.env['pos.wallet'].search([('id','=',wallet_trans_data.get('wallet_id')),('state','=','confirm')])
+						# wallet_id = self.env['pos.wallet'].search([('id','=',wallet_trans_data.get('wallet_id')),('state','=','confirm')])
+						# amount = 0.0
+						# if(wallet_id):
+						# 	subtotal_list = pos_order.lines.filtered(lambda line: line.product_id.id == wallet_trans_data.get('wallet_product_id')).mapped('price_subtotal_incl')
+						# 	if len(subtotal_list):
+						# 		sub_total = functools.reduce(lambda x,y : x+y,subtotal_list)
+						# 		wallet_trans_data['amount'] = currency.round(sub_total)
+						# 		wallet_trans_data['pos_order_id'] = pos_order.id
+						# 		del wallet_trans_data['wallet_product_id']
+						# 		self.env['pos.wallet.transaction'].create(wallet_trans_data)
+						wallet_id = self.env['pos.wallet'].search([('id','=',order_data.get('recharged_wallet_id')),('state','=','confirm')])
+						wallet_id_not_confirm = self.env['pos.wallet'].search([('id','=',order_data.get('recharged_wallet_id'))])
 						amount = 0.0
 						if(wallet_id):
 							subtotal_list = pos_order.lines.filtered(lambda line: line.product_id.id == wallet_trans_data.get('wallet_product_id')).mapped('price_subtotal_incl')
@@ -218,11 +267,11 @@ class PosOrder(models.Model):
 								sub_total = functools.reduce(lambda x,y : x+y,subtotal_list)
 								wallet_trans_data['amount'] = currency.round(sub_total)
 								wallet_trans_data['pos_order_id'] = pos_order.id
+								wallet_trans_data['wallet_id'] = wallet_id.id
 								del wallet_trans_data['wallet_product_id']
 								self.env['pos.wallet.transaction'].create(wallet_trans_data)
-
 					else:
-						wallet_id = self.env['pos.wallet'].search([('partner_id','=',order_data.get('partner_id')),('state','=','confirm')])
+						wallet_id = self.env['pos.wallet'].search([('id','=',order_data.get('redeem_wallet_id')),('partner_id','=',order_data.get('partner_id')),('state','=','confirm')])
 						if wallet_id and pos_order:
 							for payment in order_data.get('statement_ids'):
 								if payment[2].get('payment_method_id') == wallet_method.id:
@@ -239,6 +288,13 @@ class PosOrder(models.Model):
 										self.env['pos.wallet.transaction'].create(wk_wallet_trans_data)
 
 		return order_ids
+
+	@api.model
+	def _order_fields(self, ui_order):
+		result = super(PosOrder, self)._order_fields(ui_order)
+		result['recharged_wallet_id'] = ui_order.get('recharged_wallet_id') or False
+		result['redeem_wallet_id'] = ui_order.get('redeem_wallet_id') or False
+		return result
 
 class AccountJournal(models.Model):
 	_inherit = 'pos.payment.method'

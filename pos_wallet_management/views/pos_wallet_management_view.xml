@@ -74,9 +74,9 @@
                                     </group>
                                 </form>
                                 <tree string="Wallet Transaction">
+                                    <field name="create_date"/>
                                     <field name="pos_order_id"/>
                                     <field name="created_by"/>
-                                    <field name="create_date"/>
                                     <field name="payment_type"/>
                                     <field name="amount"/>
                                 </tree>

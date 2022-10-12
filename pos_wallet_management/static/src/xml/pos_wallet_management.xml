@@ -32,9 +32,28 @@
                     <div class="wallet_image">
                         <img style="pointer-events: none;" src="/pos_wallet_management/static/description/wallet.png" width="70px" height="70px" />
                         <h3 style="font-size:18px">Wallet Recharge</h3>
-                        <p style="font-size:14px">Your Wallet Balance is
-                            <b><t t-if="props.partner">
-                                <t t-esc="env.pos.format_currency(props.partner.wallet_credits)"/>
+                        <p class="partner_name_wk" style="display:none;">
+                            <!-- <t t-if="props.partner">
+                                <t t-esc="props.partner.name"/>
+                            </t> 
+                            <t t-elif="props.wallet">
+                                hereeee
+                                <t t-esc="props.wallet.partner_id[1]"/>
+                            </t> -->
+                            <t t-if="props.wallet">
+                                <t t-esc="props.wallet.partner_id[1]"/>
+                                <t t-if = "props.wallet.wk_barcode">
+                                    - <t t-esc="props.wallet.wk_barcode"/>
+                                </t>
+                                <!-- <t t-if = "props.wallet.partner and props.wallet.partner.barcode">
+                                   - <t t-esc="props.wallet.partner.barcode"/>
+                                </t> -->
+                            </t>
+                        </p>
+                        <p style="font-size:14px">
+                            <b><t t-if="props.wallet">
+                            Your Wallet Balance is
+                                <t t-esc="env.pos.format_currency(props.wallet.amount)"/>
                             </t></b>
                         </p>
                     </div>
@@ -63,22 +82,33 @@
                 <div style="overflow:hideen">
                     <div class="wallet_image">
                         <img style="pointer-events: none;" src="/pos_wallet_management/static/description/wallet.png" width="70px" height="70px" />
-                        <h3 style="font-size:18px">Transfer Money</h3>
-                        <p style="font-size:14px">Your Wallet Balance is
-                            <b><t t-if="props.partner">
-                                <t t-esc="env.pos.format_currency(props.partner.wallet_credits)"/>
+                        <h3 style="font-size:18px">Return Amount</h3>
+                        <p class="partner_name_wk" style="display:none;">
+                            <t t-if="props.partner">
+                                <t t-esc="props.partner.name"/>
+                            </t>  
+                            <t t-if="props.wallet">
+                                <t t-if = "props.wallet.wk_barcode">
+                                    - <t t-esc="props.wallet.wk_barcode"/>
+                                </t>
+                            </t>
+                        </p>
+                        <p style="font-size:14px">
+                            <b><t t-if="props.wallet">
+                                Your Wallet Balance is
+                                <t t-esc="env.pos.format_currency(props.wallet.amount)"/>
                             </t></b>
                         </p>
                     </div>
                     <div class="body">
                         <div style="float:left;text-align: left;padding-left:10%">
                             <p>Amount</p>
-                            <input  class="transfer_amount" type="number"/>
+                            <input class="rechage_amount" type="number"/>
                             <p style="margin-top:11px">Remarks</p>
-                            <textarea class="recharge_reason" rows="2"  cols="30" style="resize:none;margin-top:-7px;width:100%;font-size:16px"  >Transfer Money</textarea>
+                            <textarea class="recharge_reason" rows="2"  cols="30" style="resize:none;margin-top:-7px;width:100%;font-size:16px"  >Return Amount</textarea>
                         </div>
                         <div >
-                            <button t-on-click="wk_transfer_money" class="button validate_recharge transfer_money_button" >Transfer Money</button>
+                            <button t-on-click="wk_transfer_money" class="button validate_recharge transfer_money_button" >Return Amount</button>
                         </div>
                     </div>
                 </div>
@@ -89,17 +119,72 @@
     <t t-name="WkUsePreEventWalletPopup" owl="1">
 		<div class="modal-dialog">
 			<div class="wk_pre_event_wallet" style="padding:10px;overflow:hidden;padding: 10px;
+            overflow: hidden;background: white;width: 379px;height:265px;border-radius: 5px;margin-left: 37%;margin-top: 15%;">
+                <div class="title">
+                    <i class="fa fa-times check_barcode" t-on-click="cancel" style="font-size:25px;float:right;margin-top:-5px;cursor:pointer" aria-hidden="true"></i>
+                </div>
+                <div class="wallet_image" style="text-align: center;">
+                    <img style="pointer-events: none;" src="/pos_wallet_management/static/description/wallet.png" width="70px" height="70px" />
+                </div>
+                <h3 class="wk_wallet_text" style="font-size:18px;text-align: center;">Enter Wallet ID</h3>
+                <h3 class="wk_redeem_payment" style="display:none;font-size:18px;text-align: center;"> 
+                    <t t-if="env.pos.get_order().get_client()" >
+                        <t t-esc="env.pos.get_order().get_client().name"/>
+                    </t>
+                </h3>
+                <div class="body" style="margin-left: 30px;">
+                    <div style="float:left;text-align: left;padding-left:10%;font-size: 14px;">
+                        <input  style="margin-left: 10px;padding: 3px;width: 215px;" class="barcode_value" type="number"/>
+                    </div>
+                    <div class="wk_redeem_payment" style="display:none;font-size: 18px;    
+                        text-align: center;margin-left: -24px;">
+                       Amount : <span class="wk_wallet_amt" style="padding: 10px;
+                        "> 
+                        <b>
+                            <t t-if="props.amount">
+                                <t t-esc="env.pos.format_currency(props.amount)"/>
+                            </t>
+                        </b>
+                       </span>
+                    </div>
+                    <div class="wk_redeem_payment" style="display:none;font-size: 18px;">
+                        Redeem:
+                        <input  style="margin-top: 10px;margin-left: 10px;padding: 3px;width: 215px;" class="wk_redeem_value" type="number"/>
+                    </div>
+                    <div class="wk_proceed_btn">
+                        <button t-on-click="wk_click_pre_event_proceed" style=" background: green;border-radius: 5px;margin-right: 10px;padding: 8px;
+                        float: right; color: white;position: absolute;top: 444px;right: 436px;
+                        width: 100px;" class="button pre_event_barcode_proceed">Proceed</button>
+                    </div>
+                    <div class="wk_redeem_payment redeem_recharge_wk" style="display:none;">
+                        <button t-on-click="click_wk_redeem_recharge" style=" background: green;border-radius: 5px;margin-right: 10px;padding: 8px;
+                        float: right; color: white;position: absolute;top: 450px;right: 550px;
+                        width: 100px;" class="button wallet_recharge_redeem">Recharge</button>
+                    </div>
+                    <div class="wk_redeem_payment" style="display:none;">
+                        <button t-on-click="wk_add_wallet_paymentline" style=" background: green;border-radius: 5px;margin-right: 10px;padding: 8px;
+                        float: right; color: white;position: absolute;top: 450px;right: 433px;
+                        width: 100px;" class="button wallet_redeem_pay">Redeem</button>
+                    </div>
+                </div>
+			</div>
+		</div>
+	</t>
+
+    <t t-name="WkScanWalletPopup" owl="1">
+		<div class="modal-dialog">
+			<div class="wk_pre_event_wallet" style="padding:10px;overflow:hidden;padding: 10px;
             overflow: hidden;background: white;width: 344px;height: 130px;border-radius: 5px;margin-left: 37%;margin-top: 15%;">
                 <div class="title">
                     <i class="fa fa-times check_barcode" t-on-click="cancel" style="font-size:25px;float:right;margin-top:-5px;cursor:pointer" aria-hidden="true"></i>
                 </div>
-                <h3 style="font-size:18px;text-align: center;">Enter Barcode</h3>
+                <h3 style="font-size:18px;text-align: center;">Enter Walled ID</h3>
                 <div class="body" style="margin-left: 30px;">
                     <div style="float:left;text-align: left;padding-left:10%">
                         <input  style="margin-left: 10px;padding: 3px;" class="barcode_value" type="number"/>
                     </div>
                     <div>
-                        <button t-on-click="wk_click_pre_event_proceed" style=" background: green;border-radius: 5px;margin-right: 10px;padding: 8px;
+                        <button t-on-click="wk_click_proceed" style=" background: green;border-radius: 5px;margin-right: 10px;padding: 8px;
                         margin-top: 40px;float: right;" class="button pre_event_barcode_proceed">Proceed</button>
                     </div>
                 </div>
@@ -107,8 +192,7 @@
 		</div>
 	</t>
 
-
-    <t t-name="ClientListScreen" t-inherit="point_of_sale.ClientListScreen" t-inherit-mode="extension" owl="1">
+    <!-- <t t-name="ClientListScreen" t-inherit="point_of_sale.ClientListScreen" t-inherit-mode="extension" owl="1">
         <xpath expr="//table[hasclass('client-list')]//thead//tr//th[hasclass('client-line-email')]" position="after">
             <th>Wallet Balance</th>
         </xpath>
@@ -120,7 +204,7 @@
                 <t t-esc='props.partner.wallet_credits'/>
 			</td>
         </xpath>
-    </t>
+    </t> -->
 
     <t t-name="MainWalletRechargePopup" owl="1">
 		<div class="modal-dialog">
@@ -136,7 +220,7 @@
                     <table>
                         <tr>
                             <td>
-                                 <h3 style="font-size:16px;margin-left:46px">Wallet Id</h3>
+                                <h3 style="font-size:16px;margin-left:46px">Wallet Id</h3>
                             </td>
                             <td>
                                 <input t-on-keyup="wallet_key_press_input" class="wallet_input" placeholder="Search Wallet ID"/>
@@ -176,10 +260,9 @@
                     </div>
                 </div>
                 <div>
-                    <button t-on-click="click_validate_wallet" class="button validate_wallet" >Recharge</button>
-                    <button t-on-click="click_transfer_money_wallet" class="button validate_wallet" >Transfer Money</button>
+                    <button t-on-click="click_validate_wallet" style="margin: 0px 15px;" class="button validate_wallet" >Recharge</button>
+                    <button t-on-click="click_transfer_money_wallet" class="button validate_wallet" >Return Amount</button>
                 </div>
-                
 			</div>
 		</div>
 	</t>
@@ -193,43 +276,48 @@
     </t>
     <t t-name="Chrome" t-inherit="point_of_sale.Chrome" t-inherit-mode="extension" owl="1">
         <xpath expr="//Portal//div[hasclass('status-buttons')]//SaleDetailsButton" position="before">
-                <WalletRechargeWidget/>
+            <WalletRechargeWidget/>
         </xpath>
     </t>
 
     <t t-name="PaymentScreen" t-inherit="point_of_sale.PaymentScreen" t-inherit-mode="extension" owl="1">
       <xpath expr="//div[hasclass('paymentmethods')]" position="replace">
         <div class="paymentmethods">
-        <t t-if="env.pos.config and env.pos.config.show_wallet_type == 'checkbox'">
-          <t t-foreach="payment_methods_from_config" t-as="paymentMethod" t-key="paymentMethod.id">
-            <t t-if="paymentMethod and !paymentMethod.wallet_method">
-                <PaymentMethodButton paymentMethod="paymentMethod" />
+            <t t-if="env.pos.config and env.pos.config.show_wallet_type == 'checkbox'">
+            <t t-foreach="payment_methods_from_config" t-as="paymentMethod" t-key="paymentMethod.id">
+                    <t t-if="paymentMethod and !paymentMethod.wallet_method">
+                        <PaymentMethodButton paymentMethod="paymentMethod" />
+                    </t>
             </t>
-          </t>
-        </t>
-        <t t-else="">
-          <t t-foreach="payment_methods_from_config" t-as="paymentMethod"
-                                   t-key="paymentMethod.id">
-                                    <PaymentMethodButton paymentMethod="paymentMethod" />
-          </t>
-        </t>
+                <div class="button paymentmethod scan_wallet_qr" t-on-click="click_payment_qr_barcode">
+                    <div class="payment-name">
+                        Scan Wallet QR Code/Barcode 
+                    </div>
+                </div>
+            </t>
+            <t t-else="">
+                <t t-foreach="payment_methods_from_config" t-as="paymentMethod" t-key="paymentMethod.id">
+                    <PaymentMethodButton paymentMethod="paymentMethod" />
+                </t>
+            </t>
       </div>
-      <t t-if="env.pos.config and env.pos.config.show_wallet_type == 'checkbox'">
+      <!-- <t t-if="env.pos.config and env.pos.config.show_wallet_type == 'checkbox'">
         <div class= "wallet_text">
-         <t t-if="env.pos.config and env.pos.config.show_wallet_type == 'checkbox'">
-             <div class="use_wallet">
-                 <label class='switch'>
-                     <input  id='use_wallet_payment' type='checkbox'/>
-                     <span class='check_box round'></span>
-                 </label>
-                 <span style="position: absolute;margin: 13px;">Use Wallet Payment</span>
-             </div>
-             </t>
-         <div class="wallet_balance" style="margin-left: 23.5%;"></div>
-     </div>
-      </t>
+            <t t-if="env.pos.config and env.pos.config.show_wallet_type == 'checkbox'">
+                <div class="use_wallet">
+                    <label class='switch'>
+                        <input  id='use_wallet_payment' type='checkbox'/>
+                        <span class='check_box round'></span>
+                    </label>
+                    <span style="position: absolute;margin: 13px;">Use Wallet Payment</span>
+                </div>
+            </t>
+            <div class="wallet_balance" style="margin-left: 23.5%;"></div>
+        </div>
+      </t> -->
       </xpath>
     </t>
+
 
     <t t-name="WkErrorNotifyPopopWidget" owl="1">
 		<div class="modal-dialog">

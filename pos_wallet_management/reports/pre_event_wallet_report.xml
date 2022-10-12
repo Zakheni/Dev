@@ -8,7 +8,7 @@
             <t t-foreach="docs" t-as="o">
                 <div class="page" style="text-align:center">
                     <div class="col-12 text-center">
-                        <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="max-height: 45px;" alt="Logo"/>
+                        <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="max-height: 80px;" alt="Logo"/>
                         <h2 t-esc="o.company_id.name"/>
                     </div>
                     <div class="col-12 text-center" style="margin-top:20px;">
