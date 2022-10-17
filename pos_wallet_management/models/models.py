@@ -55,6 +55,7 @@ class PosWallet(models.Model):
 			'same_partner':False,
 			'partner':data,
 			'amount':0.0,
+			'state':barcode_record.state,
 			'wk_barcode':data.get('barcode'),
 			'name':barcode_record.name,
 			'partner_id':[partner.get('id'),partner.get('name')]
@@ -98,11 +99,10 @@ class PosWallet(models.Model):
 				self_obj.amount = amount
 	
 	@api.model
-	def check_wallet_cancel(self,data):
+	def check_wallet_state(self,data):
 		wallet_record = self.browse([data.get('wallet_id')])
-		if wallet_record.state == 'cancel':
-			return True
-		return False
+		wallet_state  = {'state':wallet_record.state}
+		return wallet_state
 
 	@api.model
 	def create_wallet_by_rpc(self,data):
@@ -248,16 +248,6 @@ class PosOrder(models.Model):
 					currency = pos_order.pricelist_id.currency_id
 					wallet_trans_data = order_data.get('wallet_recharge_data')
 					if(wallet_trans_data and wallet_trans_data.get('wallet_product_id')):
-						# wallet_id = self.env['pos.wallet'].search([('id','=',wallet_trans_data.get('wallet_id')),('state','=','confirm')])
-						# amount = 0.0
-						# if(wallet_id):
-						# 	subtotal_list = pos_order.lines.filtered(lambda line: line.product_id.id == wallet_trans_data.get('wallet_product_id')).mapped('price_subtotal_incl')
-						# 	if len(subtotal_list):
-						# 		sub_total = functools.reduce(lambda x,y : x+y,subtotal_list)
-						# 		wallet_trans_data['amount'] = currency.round(sub_total)
-						# 		wallet_trans_data['pos_order_id'] = pos_order.id
-						# 		del wallet_trans_data['wallet_product_id']
-						# 		self.env['pos.wallet.transaction'].create(wallet_trans_data)
 						wallet_id = self.env['pos.wallet'].search([('id','=',order_data.get('recharged_wallet_id')),('state','=','confirm')])
 						wallet_id_not_confirm = self.env['pos.wallet'].search([('id','=',order_data.get('recharged_wallet_id'))])
 						amount = 0.0

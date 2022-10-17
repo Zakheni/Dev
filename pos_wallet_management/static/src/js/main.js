@@ -245,6 +245,10 @@ odoo.define('pos_wallet_management.pos_wallet_management', function(require){
     Registries.Component.add(WkWalletNotifyTickPopupWidget);
 
     class WkUsePreEventWalletPopup extends AbstractAwaitablePopup {
+        mounted(){
+            var self = this;
+            $('.barcode_value').focus();
+        }
         click_wk_redeem_recharge(ev){
             var self = this;
             var current_order = self.env.pos.get_order();
@@ -261,41 +265,68 @@ odoo.define('pos_wallet_management.pos_wallet_management', function(require){
                 });
             }
         }
-
         wk_add_wallet_paymentline(ev){
             var self = this;
             self.wk_redeem_amount = $('.wk_redeem_value').val();
             var paymentMethod = self.env.pos.db.wallet_method
             var current_order = self.env.pos.get_order();
             var partner = current_order.get_client()
-            if(current_order.redeem_wallet_id && self.env.pos.db.wallet_by_id[current_order.redeem_wallet_id]){
-                var barcode = self.env.pos.db.wallet_by_id[current_order.redeem_wallet_id].wk_barcode;
-            }
-            if( self.env.pos.db.wallet_by_name[barcode]){
-                self.env.pos.db.wallet_by_name[barcode].amount -=  self.wk_redeem_amount
-            }
-            if(self.wk_redeem_amount){
-                if(self.wk_redeem_amount <= self.props.amount){
-                    current_order.add_paymentline(paymentMethod);
-                    var selected_paymentline = current_order.selected_paymentline;
-                    if(selected_paymentline){
-                        selected_paymentline.set_amount(0);
-                        var payment_amount = self.wk_redeem_amount;
-                        selected_paymentline.set_amount(payment_amount);
-                        selected_paymentline.is_wallet_payment_line = true;
+            var wallet = self.env.pos.db.wallet_by_id[current_order.redeem_wallet_id]
+            if(wallet.state== "confirm"){
+                if(current_order.redeem_wallet_id && wallet){
+                    var barcode = wallet.wk_barcode;
+                }
+                if( self.env.pos.db.wallet_by_name[barcode]){
+                    self.env.pos.db.wallet_by_name[barcode].amount -=  self.wk_redeem_amount
+                }
+                if(self.wk_redeem_amount){
+                    if(self.wk_redeem_amount <= self.props.amount){
+                        current_order.add_paymentline(paymentMethod);
+                        var selected_paymentline = current_order.selected_paymentline;
+                        if(selected_paymentline){
+                            selected_paymentline.set_amount(0);
+                            var payment_amount = self.wk_redeem_amount;
+                            selected_paymentline.set_amount(payment_amount);
+                            selected_paymentline.is_wallet_payment_line = true;
+                        }
+                        self.cancel()
+                    }else{
+                        self.showPopup('WkErrorNotifyPopopWidget', {
+                            title: _t('Error'),
+                            body: _t('Redeem amount cannot be greater than wallet amount. Please try again.'),
+                        });
                     }
-                    self.cancel()
                 }else{
                     self.showPopup('WkErrorNotifyPopopWidget', {
                         title: _t('Error'),
-                        body: _t('Redeem amount cannot be greater than wallet amount. Please try again.'),
+                        body: _t('Please enter the redeem amount to proceed.'),
                     });
                 }
-            }else{
+            }else if(wallet.state== "draft"){
                 self.showPopup('WkErrorNotifyPopopWidget', {
-                    title: _t('Error'),
-                    body: _t('Please enter the redeem amount to proceed.'),
+                    title: _t('Inactive Wallet'),
+                    body: _t('This wallet is inactive. Please try again.'),
                 });
+            }
+        }
+        wk_data_save_to_db(res,barcode){
+            var self = this;
+            var data = {
+                'amount':res.amount,
+                'id':res.wallet_id,
+                'name':res.name,
+                'partner_id':res.partner_id,
+                'wk_barcode':res.wk_barcode,
+                'wk_pre_event_wallet': false,
+                'state':res.state
+            }
+            if(data){
+                self.env.pos.db.wallet_by_name[barcode] = data;
+                self.env.pos.db.wallet_by_id[res.wallet_id] = data;
+                if(res.partner && res.partner.partner &&  self.env.pos.db.partner_by_id[res.partner.partner.id]){
+                    self.env.pos.db.partner_by_id[res.partner.partner.id].wallet_id = [res.wallet_id,res.wk_barcode];
+                }
+                self.env.pos.db.all_wallets.push(data);
             }
         }
 
@@ -308,23 +339,6 @@ odoo.define('pos_wallet_management.pos_wallet_management', function(require){
                 args:[{'barcode':barcode,'partner':self.props.partner}]
             })
             .then(function(res){
-                var data = {
-                    'amount':res.amount,
-                    'id':res.wallet_id,
-                    'name':res.name,
-                    'partner_id':res.partner_id,
-                    'wk_barcode':res.wk_barcode,
-                    'wk_pre_event_wallet': false
-                }
-                if(data){
-                    self.env.pos.db.wallet_by_name[barcode] = data;
-                    self.env.pos.db.wallet_by_id[res.wallet_id] = data;
-                    if(res.partner && res.partner.partner &&  self.env.pos.db.partner_by_id[res.partner.partner.id]){
-                        self.env.pos.db.partner_by_id[res.partner.partner.id].wallet_id = [res.wallet_id,res.wk_barcode];
-                    }
-                    self.env.pos.db.all_wallets.push(data);
-                }
-
                 if (res.wallet_id && !res.same_partner && !res.no_wallet_found){
                     setTimeout(function(){
                         $('.pre_event.wallet_status').addClass('wk_pre_circle');
@@ -333,7 +347,7 @@ odoo.define('pos_wallet_management.pos_wallet_management', function(require){
                         $('.pre_event.wallet_status').css({'border-color':'#5cb85c'});
                         $('.wk-alert center h2').text("Wallet Created !!!!!");
                     },500)
-                   
+                    self.wk_data_save_to_db(res,barcode)
                     if(!self.props.is_payment_line){
                         self.showPopup('WkWalletNotifyTickPopupWidget', {
                             title: _t('Success!!'),
@@ -346,6 +360,11 @@ odoo.define('pos_wallet_management.pos_wallet_management', function(require){
                         self.env.pos.do_action('pos_wallet_management.event_wallet_template_report',{additional_context:{ 
                             active_ids:[res.wallet_id],
                         }})  
+                    }else{
+                        self.showPopup('WkErrorNotifyPopopWidget', {
+                            title: _t('Failed To find wallet'),
+                            body: _t('Please make sure you are connected to the network.'),
+                        });
                     }   
                 }else if (res.another_partner_linked){
                     self.showPopup('WkErrorNotifyPopopWidget', {
@@ -362,17 +381,20 @@ odoo.define('pos_wallet_management.pos_wallet_management', function(require){
                         $('.wk_wallet_amt').text(self.props.amount);
                         self.props.wk_wallet_amount = self.props.amount;
                         self.env.pos.get_order().redeem_wallet_id =  res.wallet_id;
-                      
+                        self.wk_data_save_to_db(res,barcode);
                     }else{
-                        self.showPopup('WkErrorNotifyPopopWidget', {
-                            title: _t('Error'),
-                            body: _t('This wallet already has the selected partner linked with it.'),
-                        });
+                        self.wk_data_save_to_db(res,barcode);
+                        Gui.showPopup('WkWalletRechargePopup',{'partner':self.props.partner, 'wallet': res});
                     }
                 }else if (res.no_wallet_found){
                     self.showPopup('WkErrorNotifyPopopWidget', {
-                        title: _t('Error'),
+                        title: _t('Wallet Not Found'),
                         body: _t('Wallet with this barcode either does not exists or is cancelled. Please try again.'),
+                    });
+                }else{
+                    self.showPopup('WkErrorNotifyPopopWidget', {
+                        title: _t('Failed To find wallet'),
+                        body: _t('Please make sure you are connected to the network.'),
                     });
                 }
             }).catch(function(error){
@@ -387,37 +409,6 @@ odoo.define('pos_wallet_management.pos_wallet_management', function(require){
     WkUsePreEventWalletPopup.template = 'WkUsePreEventWalletPopup';
     WkUsePreEventWalletPopup.defaultProps = { title: 'Confirm ?', body: '' };
     Registries.Component.add(WkUsePreEventWalletPopup);
-
-    class WkScanWalletPopup extends AbstractAwaitablePopup {
-        wk_click_proceed(ev){
-            var self  = this;
-            var barcode = $(".barcode_value").val()
-            var wkBarcode = this.env.pos.db.wallet_by_name[barcode]
-            if (wkBarcode){
-                if(wkBarcode && !(wkBarcode.partner_id)){
-                    self.showPopup('WkErrorNotifyPopopWidget', {
-                        title: _t('Error'),
-                        body: _t('No partner is currently linked with this Wallet. Please try again.'),
-                    });
-                } else if(wkBarcode && wkBarcode.partner_id && (wkBarcode.partner_id[0] != self.props.partner.id)){
-                    self.showPopup('WkErrorNotifyPopopWidget', {
-                        title: _t('Error'),
-                        body: _t('This wallet is linked with another customer. Please try again.'),
-                    });
-                } else {
-                    Gui.showPopup('WkWalletRechargePopup',{'partner':self.props.partner, 'wallet': this.env.pos.db.wallet_by_name[barcode]});
-                }
-            } else {
-                self.showPopup('WkErrorNotifyPopopWidget', {
-                    title: _t('Error'),
-                    body: _t('Wallet with this barcode either does not exists or is cancelled. Please try again.'),
-                });
-            }
-        }
-    }
-    WkScanWalletPopup.template = 'WkScanWalletPopup';
-    WkScanWalletPopup.defaultProps = { title: 'Confirm ?', body: '' };
-    Registries.Component.add(WkScanWalletPopup);
 
     class WkWalletRechargePopup extends AbstractAwaitablePopup {
         mounted(){
@@ -434,79 +425,83 @@ odoo.define('pos_wallet_management.pos_wallet_management', function(require){
         wk_validate_recharge(){
             var self = this;
             if(self.props && self.props.partner){
-                var recharge_amount = parseFloat($('.rechage_amount').val());
-                var reason = $('.recharge_reason').val();
-                if(recharge_amount<=0 || !recharge_amount){
-                    $('.rechage_amount').removeClass('text_shake');
-                    $('.rechage_amount').focus();
-                    $('.rechage_amount').addClass('text_shake');
-					return;
-                }
-                else if(reason == ""){
-                    $('.recharge_reason').removeClass('text_shake');
-                    $('.recharge_reason').focus();
-                    $('.recharge_reason').addClass('text_shake');
-					return;
-                } else {
-                    var wallet_product = self.env.pos.db.wallet_product;
-                    rpc.query({
-                        model:'pos.wallet',
-                        method:'check_wallet_cancel',
-                        args:[{'wallet_id':self.props.wallet.id}]
-                    })
-                    .then(function(res){
-                        if(res){
-                            self.showPopup('WkErrorNotifyPopopWidget', {
-                                title: _t('Failed To Proceed'),
-                                body: _t('This wallet is cancelled. Please try again with another wallet.')
-                            });
-                        }else{
-                            if(wallet_product){
-                                var trans_data = {};
-                                trans_data.amount = recharge_amount;
-                                trans_data.trans_reason = reason;
-                                trans_data.created_by = parseInt(self.env.pos.cashier ? self.env.pos.cashier.id : self.env.pos.user.id);
-                                trans_data.partner_id = parseInt(self.props.partner.id);
-                                if(self.props.partner){
-                                    // trans_data.wallet_id = parseInt(self.props.partner.wallet_id[0]) || self.props.wallet.wallet_id;
-                                    trans_data.wallet_id = self.props.wallet.wallet_id;
-                                }
-                                trans_data.payment_type = 'CREDIT';
-                                trans_data.wallet_product_id = wallet_product.id;
-                                trans_data.state = 'confirm'
-                                self.env.pos.add_new_order();
-                                var curren_order = self.env.pos.get_order();
-                                curren_order.wallet_recharge_data = trans_data;
-                                curren_order.add_product(wallet_product, {quantity: 1, price: recharge_amount });
-                                curren_order.set_client(self.props.partner);
-                                if(self.props.wallet && self.props.wallet.partner){
-                                    curren_order.wk_recharge_barcode = self.props.wallet.partner.barcode;
-                                }
-                                if (self.props.wallet){
-                                    curren_order.recharged_wallet_id = self.props.wallet.id || self.props.wallet.wallet_id;
-                                }  
-                                self.cancel();
-                                self.trigger('close-temp-screen');
-                                self.showScreen('PaymentScreen');
-                                curren_order.save_to_db();
-                            } else {
+                    var recharge_amount = parseFloat($('.rechage_amount').val());
+                    var reason = $('.recharge_reason').val();
+                    if(recharge_amount<=0 || !recharge_amount){
+                        $('.rechage_amount').removeClass('text_shake');
+                        $('.rechage_amount').focus();
+                        $('.rechage_amount').addClass('text_shake');
+                        return;
+                    }
+                    else if(reason == ""){
+                        $('.recharge_reason').removeClass('text_shake');
+                        $('.recharge_reason').focus();
+                        $('.recharge_reason').addClass('text_shake');
+                        return;
+                    } else {
+                        var wallet_product = self.env.pos.db.wallet_product;
+                        var wallet = self.props.wallet.id || self.props.wallet.wallet_id;
+                        rpc.query({
+                            model:'pos.wallet',
+                            method:'check_wallet_state',
+                            args:[{'wallet_id':wallet}]
+                        })
+                        .then(function(res){
+                            if(res.state == "cancel"){
                                 self.showPopup('WkErrorNotifyPopopWidget', {
-                                    title: _t('Failed To Recharge Wallet.'),
-                                    body: _t('No wallet product is available in POS.'),
+                                    title: _t('Failed To Proceed'),
+                                    body: _t('This wallet is cancelled. Please try again with another wallet.')
+                                });
+                            }else if(res.state == "confirm"){
+                                if(wallet_product){
+                                    var trans_data = {};
+                                    trans_data.amount = recharge_amount;
+                                    trans_data.trans_reason = reason;
+                                    trans_data.created_by = parseInt(self.env.pos.cashier ? self.env.pos.cashier.id : self.env.pos.user.id);
+                                    trans_data.partner_id = parseInt(self.props.partner.id);
+                                    if(self.props.partner){
+                                        trans_data.wallet_id = self.props.wallet.wallet_id;
+                                    }
+                                    trans_data.payment_type = 'CREDIT';
+                                    trans_data.wallet_product_id = wallet_product.id;
+                                    trans_data.state = 'confirm'
+                                    self.env.pos.add_new_order();
+                                    var curren_order = self.env.pos.get_order();
+                                    curren_order.wallet_recharge_data = trans_data;
+                                    curren_order.add_product(wallet_product, {quantity: 1, price: recharge_amount });
+                                    curren_order.set_client(self.props.partner);
+                                    if(self.props.wallet && self.props.wallet.partner){
+                                        curren_order.wk_recharge_barcode = self.props.wallet.partner.barcode;
+                                    }
+                                    if (self.props.wallet){
+                                        curren_order.recharged_wallet_id = self.props.wallet.id || self.props.wallet.wallet_id;
+                                    }  
+                                    self.cancel();
+                                    self.trigger('close-temp-screen');
+                                    self.showScreen('PaymentScreen');
+                                    curren_order.save_to_db();
+                                } else {
+                                    self.showPopup('WkErrorNotifyPopopWidget', {
+                                        title: _t('Failed To Recharge Wallet.'),
+                                        body: _t('No wallet product is available in POS.'),
+                                    });
+                                }
+                            }else{
+                                self.showPopup('WkErrorNotifyPopopWidget', {
+                                    title: _t('Inactive Wallet'),
+                                    body: _t('This wallet is inactive. Please try again.'),
                                 });
                             }
-                        }
-
-                    }).catch(function(error){
-                        console.log("error:",error)
-                        self.showPopup('WkErrorNotifyPopopWidget', {
-                            title: _t('Failed To find wallet'),
-                            body: _t('Please make sure you are connected to the network.'),
+                          
+                        }).catch(function(error){
+                            console.log("error:",error)
+                            self.showPopup('WkErrorNotifyPopopWidget', {
+                                title: _t('Failed To find wallet'),
+                                body: _t('Please make sure you are connected to the network.'),
+                            });
                         });
-                    });
-                    
+                    }
                 }
-            }
         }
     }
     WkWalletRechargePopup.template = 'WkWalletRechargePopup';
@@ -628,25 +623,23 @@ odoo.define('pos_wallet_management.pos_wallet_management', function(require){
     Registries.Component.add(MainWalletRechargePopup);
     
     class WkPreEventWalletTransferPopup extends PosComponent {
-
         mounted(){
             super.mounted();
-            $('.partner_name_wk').show();
         }
         wk_transfer_money(ev){
             var self = this;
             rpc.query({
                 model:'pos.wallet',
-                method:'check_wallet_cancel',
+                method:'check_wallet_state',
                 args:[{'wallet_id':self.props.wallet.id}]
             })
             .then(function(res){
-                if(res){
+                if(res.state=="cancel"){
                     self.showPopup('WkErrorNotifyPopopWidget', {
                         title: _t('Failed To Proceed'),
                         body: _t('This wallet is cancelled. Please try again with another wallet.')
                     });
-                }else{
+                }else if(res.state == "confirm"){
                     if(self.props && self.props.partner){
                         if (self.props.wallet && (self.props.wallet.amount > 0)){
                             var rechage_amount = parseFloat($('.rechage_amount').val());
@@ -670,7 +663,6 @@ odoo.define('pos_wallet_management.pos_wallet_management', function(require){
                                     .then(function(result){
                                         if (result){
                                             self.env.pos.db.wallet_by_name[self.props.wallet.wk_barcode].amount -= rechage_amount
-
                                             self.showPopup('WkErrorNotifyPopopWidget', {
                                                 title: _t('Wallet Transfer Succesfull'),
                                                 body: _t('Wallet transfer of '+self.env.pos.format_currency(rechage_amount) +' is successful.'),
@@ -701,7 +693,6 @@ odoo.define('pos_wallet_management.pos_wallet_management', function(require){
                                     body: _t('The transfer amount cannot be greater than the wallet amount.'),
                                 });
                             }
-                            
                         } else {
                             self.showPopup('WkErrorNotifyPopopWidget', {
                                 title: _t('Failed To Transfer Money.'),
@@ -709,6 +700,11 @@ odoo.define('pos_wallet_management.pos_wallet_management', function(require){
                             });
                         }
                     }
+                }else{
+                    self.showPopup('WkErrorNotifyPopopWidget', {
+                        title: _t('Inactive Wallet'),
+                        body: _t('This wallet is inactive. Please try again.')
+                    });
                 }
             }).catch(function(error){
                 console.log("error:",error)
@@ -774,7 +770,7 @@ odoo.define('pos_wallet_management.pos_wallet_management', function(require){
             recharge_wallet(){
                 var self = this;
                 if(self.env.pos.db.wallet_method){
-                    self.showPopup('WkScanWalletPopup',{'partner':this.props.partner});
+                    self.showPopup('WkUsePreEventWalletPopup',{'is_payment_line':false,'partner':this.props.partner});
                 } else {
                     self.showPopup('WkErrorNotifyPopopWidget',{
                         title: _t('Payment Method  For Wallet Not Found'),
@@ -817,7 +813,6 @@ odoo.define('pos_wallet_management.pos_wallet_management', function(require){
                     var set_this_amount = Math.min(due_amount, wallet_credits, input_amount);
                     current_order.selected_paymentline.set_amount(set_this_amount);
                     self.inputbuffer = set_this_amount.toString();
-                    // self.order_changes();
                     self.render();
                     $('.paymentline.selected .edit').text(self.env.pos.format_currency_no_symbol(set_this_amount));
                     $('div.wallet_balance').html("Balance: <span style='color: #247b45;font-weight: bold;'>" + self.env.pos.format_currency(client.wallet_credits-set_this_amount) + "</span>");
@@ -828,7 +823,6 @@ odoo.define('pos_wallet_management.pos_wallet_management', function(require){
                     var input_amount = selected_paymentline.amount;
                     $('.paymentline.selected .edit').text(self.env.pos.format_currency_no_symbol(set_this_amount));
                     $('div.wallet_balance').html("Balance: <span style='color: #247b45;font-weight: bold;'>" + self.env.pos.format_currency(client.wallet_credits-input_amount) + "</span>");
-
                 }
             }
         }
@@ -917,7 +911,6 @@ odoo.define('pos_wallet_management.pos_wallet_management', function(require){
             super.mounted();
             var current_order = self.env.pos.get_order();
             var client = current_order.get_client();
-            // self.hide_wallet_payment_method();
         }
 
         update_walletline_balance(pline){
@@ -985,21 +978,6 @@ odoo.define('pos_wallet_management.pos_wallet_management', function(require){
                             wallet_names[i].amount += amount;
                         }
                     }
-
-                    // if(current_order.wk_recharge_barcode){
-                    //     rpc.query({
-                    //         model:'pos.wallet',
-                    //         method:'check_barcode_exists',
-                    //         args:[{'barcode':current_order.wk_recharge_barcode,'partner':partner}]
-                    //     })
-                    //     .then(function(res){
-                    //         if (res.same_partner){
-                    //             self.env.pos.db.wallet_by_name[current_order.wk_recharge_barcode] = res
-                    //             self.env.pos.db.wallet_by_name[current_order.wk_recharge_barcode]['amount']= amount;
-                    //         }
-                    //     })
-                        
-                    // }
 
                 }
                 else if(current_order && self.env.pos.db.wallet_method && current_order.get_client()){

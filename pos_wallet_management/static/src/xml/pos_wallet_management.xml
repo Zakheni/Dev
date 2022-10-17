@@ -3,8 +3,6 @@
 <!-- See LICENSE file for full copyright and licensing details. -->
 <!-- License URL : <https://store.webkul.com/license.html/> -->
 <templates id="template" xml:space="preserve">
-
-
     <t t-name="ClientLine" t-inherit="point_of_sale.ClientLine" t-inherit-mode="extension" owl="1">
         <xpath expr="//tr/td[2]" position="inside">
             <span t-if="highlight">
@@ -33,21 +31,11 @@
                         <img style="pointer-events: none;" src="/pos_wallet_management/static/description/wallet.png" width="70px" height="70px" />
                         <h3 style="font-size:18px">Wallet Recharge</h3>
                         <p class="partner_name_wk" style="display:none;">
-                            <!-- <t t-if="props.partner">
-                                <t t-esc="props.partner.name"/>
-                            </t> 
-                            <t t-elif="props.wallet">
-                                hereeee
-                                <t t-esc="props.wallet.partner_id[1]"/>
-                            </t> -->
                             <t t-if="props.wallet">
                                 <t t-esc="props.wallet.partner_id[1]"/>
                                 <t t-if = "props.wallet.wk_barcode">
                                     - <t t-esc="props.wallet.wk_barcode"/>
                                 </t>
-                                <!-- <t t-if = "props.wallet.partner and props.wallet.partner.barcode">
-                                   - <t t-esc="props.wallet.partner.barcode"/>
-                                </t> -->
                             </t>
                         </p>
                         <p style="font-size:14px">
@@ -178,7 +166,7 @@
                 <div class="title">
                     <i class="fa fa-times check_barcode" t-on-click="cancel" style="font-size:25px;float:right;margin-top:-5px;cursor:pointer" aria-hidden="true"></i>
                 </div>
-                <h3 style="font-size:18px;text-align: center;">Enter Walled ID</h3>
+                <h3 style="font-size:18px;text-align: center;">Enter Wallet ID</h3>
                 <div class="body" style="margin-left: 30px;">
                     <div style="float:left;text-align: left;padding-left:10%">
                         <input  style="margin-left: 10px;padding: 3px;" class="barcode_value" type="number"/>
@@ -191,20 +179,6 @@
 			</div>
 		</div>
 	</t>
-
-    <!-- <t t-name="ClientListScreen" t-inherit="point_of_sale.ClientListScreen" t-inherit-mode="extension" owl="1">
-        <xpath expr="//table[hasclass('client-list')]//thead//tr//th[hasclass('client-line-email')]" position="after">
-            <th>Wallet Balance</th>
-        </xpath>
-    </t>
-
-    <t t-name="ClientLine" t-inherit="point_of_sale.ClientLine" t-inherit-mode="extension" owl="1">
-        <xpath expr="//td[5]" position="after">
-            <td>
-                <t t-esc='props.partner.wallet_credits'/>
-			</td>
-        </xpath>
-    </t> -->
 
     <t t-name="MainWalletRechargePopup" owl="1">
 		<div class="modal-dialog">
@@ -317,7 +291,6 @@
       </t> -->
       </xpath>
     </t>
-
 
     <t t-name="WkErrorNotifyPopopWidget" owl="1">
 		<div class="modal-dialog">
