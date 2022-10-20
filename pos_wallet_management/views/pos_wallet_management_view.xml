@@ -9,20 +9,20 @@
         <field name="inherit_id" ref="point_of_sale.pos_config_view_form" />
         <field name="arch" type="xml">
             <xpath expr="////div[@class='row mt16 o_settings_container'][8]" position="after">
-                <h2>POS Wallet Management</h2>
-                <div class="row mt16 o_settings_container" id="wk_pos_wallet">
+                <!-- <h2>POS Wallet Management</h2> -->
+                <!-- <div class="row mt16 o_settings_container" id="wk_pos_wallet">
                     <div class="col-xs-12 col-md-6 o_setting_box" title="Select between the option to show wallet payment method as payment method or as check box slider in POS Session">
-                        <div class="o_setting_right_pane">
-                            <label for="show_wallet_type" string="Order Reprint Type"/>
+                        <div class="o_setting_right_pane"> -->
+                            <!-- <label for="show_wallet_type" string="Order Reprint Type"/>
                             <div class="text-muted">
                                 Select Wallet Payment Method View in Session (Wallet Button)
-                            </div>
-                            <div class="content-group mt16">
-                                <field name="show_wallet_type"/>
-                            </div>
+                            </div> -->
+                            <!-- <div class="content-group mt16"> -->
+                                <field name="show_wallet_type" invisible="1"/>
+                            <!-- </div>
                         </div>
                     </div>
-                </div>
+                </div> -->
             </xpath>
         </field>
     </record>
