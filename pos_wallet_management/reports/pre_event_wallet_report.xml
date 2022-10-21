@@ -8,14 +8,15 @@
             <t t-foreach="docs" t-as="o">
                 <div class="page" style="text-align:center">
                     <span style="float:left">
-                        <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="max-height: 130px;max-width:160px" alt="Logo"/>
+                        <img t-if="o.company_id.logo" t-att-src="image_data_uri(o.company_id.logo)" style="min-height: auto;min-width:140px max-height: 150px;max-width:180px" alt="Logo"/>
                         <div class="col-12 text-center">
-                        <t t-if="o.partner_id and o.partner_id.name">
-                            <span t-esc="o.partner_id.name"/>
-                        </t>
-                        <t t-else="">
-                            --
-                        </t>
+                            <br/>
+                            <t t-if="o.partner_id and o.partner_id.name">
+                                <span t-esc="o.partner_id.name"/>
+                            </t>
+                            <t t-else="">
+                                --
+                            </t>
                         </div>
                         <div class="col-12 text-center">
                             <t t-if="o.partner_id and o.partner_id.phone">
@@ -26,12 +27,12 @@
                             </t>
                         </div>
                     </span>
-                    <span style="float:right;padding-right:20px;">
+                    <span style="float:right;padding-right:10px;">
                         <div class="col-12 text-center" style="margin-top:20px;margin-bottom:20px;">
-                            <img t-att-src="'/report/barcode/?type=%s&amp;value=%s&amp;width=%s&amp;height=%s' % ('QR',o.wk_barcode, 200, 200)" style="width:100px;height:100px;"/>
+                            <img t-att-src="'/report/barcode/?type=%s&amp;value=%s&amp;width=%s&amp;height=%s' % ('QR',o.wk_barcode, 200, 200)" style="width:140px;height:140px;"/>
                         </div>
-                        <div class="text-center" style="margin-top:5px;">
-                            <img t-field="o.wk_barcode" t-options="{'widget': 'barcode', 'width': 180, 'height': 50}"/>
+                        <div class="text-center" style="margin-top:10px;">
+                            <img t-field="o.wk_barcode" t-options="{'widget': 'barcode', 'width': 200, 'height': 50}"/>
                             <h2 t-esc="o.wk_barcode" style="font-size:15px;"/>
                         </div>
                     </span>
