@@ -117,7 +117,7 @@
         </field>
     </record>
 
-        <record model="ir.ui.view" id="pos_wallet_management.pre_event_wallet_tree_view">
+    <record model="ir.ui.view" id="pos_wallet_management.pre_event_wallet_tree_view">
         <field name="name">POS Wallet List</field>
         <field name="model">pos.wallet</field>
         <field name="type">tree</field>

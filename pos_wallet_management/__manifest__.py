@@ -17,7 +17,7 @@
   "name"                 :  "POS Wallet Management",
   "summary"              :  """Custom : Introducing Odoo POS wallets for quick and easy payments. The customers can have the money added into their wallet and use it to quickly pay for their orders.""",
   "category"             :  "Point of Sale",
-  "version"              :  "1.0.5",
+  "version"              :  "1.0.6",
   "sequence"             :  1,
   "author"               :  "Webkul Software Pvt. Ltd.",
   "license"              :  "Other proprietary",

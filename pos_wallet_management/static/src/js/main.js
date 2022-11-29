@@ -1,8 +1,8 @@
 /* Copyright (c) 2016-Present Webkul Software Pvt. Ltd. (<https://webkul.com/>) */
 /* See LICENSE file for full copyright and licensing details. */
 /* License URL : <https://store.webkul.com/license.html/> */
-odoo.define('pos_wallet_management.pos_wallet_management', function(require){
-"use strict";
+odoo.define('pos_wallet_management.pos_wallet_management', function (require) {
+    "use strict";
     var pos_model = require('point_of_sale.models');
     var rpc = require('web.rpc')
     var PosDB = require('point_of_sale.DB');
